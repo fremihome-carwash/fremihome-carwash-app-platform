@@ -1,0 +1,66 @@
+# =====================================================================
+# cw_platf — frontend de plataforma (workspace pnpm)
+# =====================================================================
+
+# ─── Dependencies ────────────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+.pnp
+.pnp.js
+
+# ─── Build / dist ────────────────────────────────────────────────────
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# ─── Vite ────────────────────────────────────────────────────────────
+dist-ssr/
+.vite/
+
+# ─── Env files (secrets) ─────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+# Permitir versionar el ejemplo
+!.env.example
+
+# ─── Logs ────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ─── Coverage / tests ────────────────────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+
+# ─── Caches ──────────────────────────────────────────────────────────
+.cache/
+.local/
+.parcel-cache/
+.turbo/
+.eslintcache
+
+# ─── IDE / editor ────────────────────────────────────────────────────
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# ─── OS ──────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+
+# ─── Replit ──────────────────────────────────────────────────────────
+.replit-artifact
+.upm/
+
+# ─── Agents ──────────────────────────────────────────────────────────
+.agents/
+.atl/

@@ -1,0 +1,68 @@
+name: Upload changed files to S3
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    # A nivel de job para que el `if:` del paso de invalidacion pueda leerlo:
+    # el contexto `secrets` no esta disponible dentro de un `if:` de paso.
+    env:
+      AWS_CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Este repo es un workspace pnpm (no npm): el `preinstall` del package.json
+    # raiz aborta si el agente no es pnpm, y no existe package-lock.json.
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 11.3.0
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build site
+      # PORT y BASE_PATH son obligatorios: vite.config.ts lanza error si faltan.
+      # El build sale en artifacts/platform/dist/public (ver build.outDir).
+      env:
+        PORT: 8083
+        BASE_PATH: /
+        NODE_ENV: production
+      run: pnpm --filter @workspace/platform run build
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Sync dist to S3
+      # El contenido del dist queda en la raiz del mismo prefijo de siempre:
+      # dist/public/index.html -> s3://$AWS_S3_BUCKET/index.html
+      run: aws s3 sync artifacts/platform/dist/public/ "s3://${{ vars.AWS_S3_BUCKET }}" --delete
+
+    - name: Invalidate CloudFront
+      # Sin esto el deploy queda invisible: CloudFront cachea una variante por
+      # Accept-Encoding y la comprimida (la que pide todo navegador) sigue
+      # sirviendo lo viejo hasta que expire su TTL.
+      # Se salta solo si todavia no existe el secret, para no romper el deploy.
+      if: env.AWS_CLOUDFRONT_DISTRIBUTION_ID != ''
+      run: |
+        aws cloudfront create-invalidation \
+          --distribution-id "$AWS_CLOUDFRONT_DISTRIBUTION_ID" \
+          --paths "/*"
