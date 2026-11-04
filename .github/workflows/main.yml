@@ -40,7 +40,11 @@ jobs:
       # El build sale en artifacts/platform/dist/public (ver build.outDir).
       env:
         PORT: 8083
-        BASE_PATH: /
+        # La app se sirve desde <host>/carwash/, no desde la raiz. Vite lo
+        # quiere con barra final; de ahi sale import.meta.env.BASE_URL, que
+        # App.tsx le pasa como base al router de wouter. Tiene que coincidir
+        # con `apps` de la entrada de este host en la CloudFront function.
+        BASE_PATH: /carwash/
         NODE_ENV: production
       run: pnpm --filter @workspace/platform run build
 
