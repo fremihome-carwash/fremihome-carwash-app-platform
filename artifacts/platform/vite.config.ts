@@ -84,11 +84,11 @@ export default defineConfig(async ({ mode }) => {
       },
       proxy: {
         "/api": {
-          target: env.API_PROXY_TARGET ?? "http://localhost:8080",
+          target: env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080",
           changeOrigin: true,
         },
         "/uploads": {
-          target: env.API_PROXY_TARGET ?? "http://localhost:8080",
+          target: env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080",
           changeOrigin: true,
         },
       },

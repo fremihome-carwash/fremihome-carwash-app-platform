@@ -10,7 +10,7 @@ Panel de control web (mobile-first) para el super administrador de la plataforma
 - Frontend platform (este repo): `pnpm --filter @workspace/platform run dev` (puerto 23633)
 - `pnpm run typecheck` — typecheck del frontend
 - `pnpm run build` — build del frontend
-- El proxy `/api → http://localhost:8080` está en `artifacts/platform/vite.config.ts` (override con `API_PROXY_TARGET`).
+- El proxy `/api → http://localhost:8080` está en `artifacts/platform/vite.config.ts` (override con `EXPO_PUBLIC_API_URL`).
 
 ## Stack
 
