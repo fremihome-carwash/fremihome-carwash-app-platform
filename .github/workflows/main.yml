@@ -52,9 +52,19 @@ jobs:
         aws-region: us-east-1
 
     - name: Sync dist to S3
-      # El contenido del dist queda en la raiz del mismo prefijo de siempre:
-      # dist/public/index.html -> s3://$AWS_S3_BUCKET/index.html
-      run: aws s3 sync artifacts/platform/dist/public/ "s3://${{ vars.AWS_S3_BUCKET }}" --delete
+      # Cada app vive en su propio prefijo del bucket compartido; sin
+      # AWS_S3_PATH las tres sincronizan sobre la raiz y, con --delete, se
+      # borran entre si. Por eso el prefijo vacio aborta el deploy.
+      env:
+        AWS_S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
+        AWS_S3_PATH: ${{ vars.AWS_S3_PATH }}
+      run: |
+        if [ -z "$AWS_S3_PATH" ]; then
+          echo "::error::AWS_S3_PATH no esta definida. Abortando: sincronizar sobre la raiz del bucket con --delete borraria las otras apps."
+          exit 1
+        fi
+        PREFIX="${AWS_S3_PATH#/}"
+        aws s3 sync artifacts/platform/dist/public/ "s3://$AWS_S3_BUCKET/${PREFIX%/}/" --delete
 
     - name: Invalidate CloudFront
       # Sin esto el deploy queda invisible: CloudFront cachea una variante por
