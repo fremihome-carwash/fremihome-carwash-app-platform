@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
+import { hardRedirect } from "@/lib/utils";
 
 export default function Login() {
   const [email, setEmail] = useState("admin");
@@ -21,7 +22,7 @@ export default function Login() {
       {
         onSuccess: (data) => {
           localStorage.setItem("platform_token", data.data.token);
-          window.location.href = "/dashboard";
+          hardRedirect("/dashboard");
         },
         onError: (err) => {
           setError(err instanceof Error ? err.message : "Credenciales incorrectas");

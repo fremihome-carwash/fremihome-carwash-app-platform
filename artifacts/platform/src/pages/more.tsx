@@ -12,6 +12,7 @@ import {
   LogOut,
   Droplets,
 } from "lucide-react";
+import { hardRedirect } from "@/lib/utils";
 
 const sections = [
   { href: "/catalog/packages",   label: "Paquetes",         icon: PackageSearch, desc: "Catálogo de paquetes" },
@@ -32,7 +33,7 @@ export default function More() {
     logout.mutate(undefined, {
       onSettled: () => {
         localStorage.removeItem("platform_token");
-        window.location.href = "/login";
+        hardRedirect("/login");
       },
     });
   };
