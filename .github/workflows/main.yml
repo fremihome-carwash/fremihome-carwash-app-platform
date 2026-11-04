@@ -52,9 +52,9 @@ jobs:
         aws-region: us-east-1
 
     - name: Sync dist to S3
-      # Cada app vive en su propio prefijo del bucket compartido. Sin
-      # AWS_S3_PATH las tres sincronizan sobre la raiz y, con --delete, se
-      # borran entre si; por eso ese vacio aborta el deploy.
+      # Cada app vive en su propio prefijo del bucket. Sin AWS_S3_PATH las
+      # tres sincronizan sobre la raiz y, con --delete, se borran entre si;
+      # por eso ese vacio aborta el deploy.
       env:
         AWS_S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
         AWS_S3_PATH: ${{ vars.AWS_S3_PATH }}
@@ -64,32 +64,33 @@ jobs:
         # resuelve a prod. El case queda explicito para que sumar una rama de
         # staging sea agregar un renglon y no reescribir el step.
         case "$GITHUB_REF_NAME" in
-          main) ENV_SEGMENT="$ENV_PROD" ;;
+          main) ENV_PREFIX="$ENV_PROD" ;;
           *)
             echo "::error::La rama $GITHUB_REF_NAME no tiene entorno asignado."
             exit 1
             ;;
         esac
 
-        # Trim de espacios y de barras sobrantes en los dos extremos, asi el
-        # valor de la variable puede venir como "app-company/carwash",
-        # "/app-company/carwash/" o con espacios al pegarlo, y da lo mismo.
+        # Trim de espacios, puntos y barras sobrantes, asi da igual como se
+        # haya cargado la variable ("dev", "dev.", " /app/carwash/ ", etc).
         trim() { printf '%s' "$1" | tr -d '[:space:]'; }
         PREFIX="$(trim "$AWS_S3_PATH")"; PREFIX="${PREFIX#/}"; PREFIX="${PREFIX%/}"
-        ENV_SEGMENT="$(trim "$ENV_SEGMENT")"; ENV_SEGMENT="${ENV_SEGMENT#/}"; ENV_SEGMENT="${ENV_SEGMENT%/}"
+        ENV_PREFIX="$(trim "$ENV_PREFIX")"; ENV_PREFIX="${ENV_PREFIX%.}"
 
         if [ -z "$PREFIX" ]; then
           echo "::error::AWS_S3_PATH no esta definida. Abortando: sincronizar sobre la raiz del bucket con --delete borraria las otras apps."
           exit 1
         fi
 
-        # ENV_SEGMENT vacio es prod: la app va directo en su prefijo, sin
-        # carpeta de entorno. Los demas entornos si cuelgan de una subcarpeta.
-        DEST="s3://$AWS_S3_BUCKET/$PREFIX/"
-        if [ -n "$ENV_SEGMENT" ]; then
-          DEST="s3://$AWS_S3_BUCKET/$PREFIX/$ENV_SEGMENT/"
+        # El entorno es un prefijo del NOMBRE del bucket, no una carpeta:
+        # dev -> s3://dev.fremihome-carwash/<path>/. ENV_PROD esta vacia a
+        # proposito, asi prod usa el bucket pelado.
+        BUCKET="$AWS_S3_BUCKET"
+        if [ -n "$ENV_PREFIX" ]; then
+          BUCKET="$ENV_PREFIX.$AWS_S3_BUCKET"
         fi
 
+        DEST="s3://$BUCKET/$PREFIX/"
         echo "Sincronizando a $DEST"
         aws s3 sync artifacts/platform/dist/public/ "$DEST" --delete
 
