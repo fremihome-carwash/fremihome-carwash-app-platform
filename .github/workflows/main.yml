@@ -52,19 +52,46 @@ jobs:
         aws-region: us-east-1
 
     - name: Sync dist to S3
-      # Cada app vive en su propio prefijo del bucket compartido; sin
+      # Cada app vive en su propio prefijo del bucket compartido. Sin
       # AWS_S3_PATH las tres sincronizan sobre la raiz y, con --delete, se
-      # borran entre si. Por eso el prefijo vacio aborta el deploy.
+      # borran entre si; por eso ese vacio aborta el deploy.
       env:
         AWS_S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
         AWS_S3_PATH: ${{ vars.AWS_S3_PATH }}
+        ENV_PROD: ${{ vars.ENV_PROD }}
       run: |
-        if [ -z "$AWS_S3_PATH" ]; then
+        # main es la unica rama que dispara este workflow, asi que hoy siempre
+        # resuelve a prod. El case queda explicito para que sumar una rama de
+        # staging sea agregar un renglon y no reescribir el step.
+        case "$GITHUB_REF_NAME" in
+          main) ENV_SEGMENT="$ENV_PROD" ;;
+          *)
+            echo "::error::La rama $GITHUB_REF_NAME no tiene entorno asignado."
+            exit 1
+            ;;
+        esac
+
+        # Trim de espacios y de barras sobrantes en los dos extremos, asi el
+        # valor de la variable puede venir como "app-company/carwash",
+        # "/app-company/carwash/" o con espacios al pegarlo, y da lo mismo.
+        trim() { printf '%s' "$1" | tr -d '[:space:]'; }
+        PREFIX="$(trim "$AWS_S3_PATH")"; PREFIX="${PREFIX#/}"; PREFIX="${PREFIX%/}"
+        ENV_SEGMENT="$(trim "$ENV_SEGMENT")"; ENV_SEGMENT="${ENV_SEGMENT#/}"; ENV_SEGMENT="${ENV_SEGMENT%/}"
+
+        if [ -z "$PREFIX" ]; then
           echo "::error::AWS_S3_PATH no esta definida. Abortando: sincronizar sobre la raiz del bucket con --delete borraria las otras apps."
           exit 1
         fi
-        PREFIX="${AWS_S3_PATH#/}"
-        aws s3 sync artifacts/platform/dist/public/ "s3://$AWS_S3_BUCKET/${PREFIX%/}/" --delete
+
+        # ENV_SEGMENT vacio es prod: la app va directo en su prefijo, sin
+        # carpeta de entorno. Los demas entornos si cuelgan de una subcarpeta.
+        DEST="s3://$AWS_S3_BUCKET/$PREFIX/"
+        if [ -n "$ENV_SEGMENT" ]; then
+          DEST="s3://$AWS_S3_BUCKET/$PREFIX/$ENV_SEGMENT/"
+        fi
+
+        echo "Sincronizando a $DEST"
+        aws s3 sync artifacts/platform/dist/public/ "$DEST" --delete
 
     - name: Invalidate CloudFront
       # Sin esto el deploy queda invisible: CloudFront cachea una variante por
